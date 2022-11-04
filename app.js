@@ -68,11 +68,6 @@ async function fetchRssFeed(feedUrl) {
 /////////////////////////////////// End Original Parser //////////////////////////////////////////////////////
 
 
-
-
-
-
-
 // IFTTT Status Test
 app.get('/ifttt/v1/status', function(req, res) {
     var serviceKey = req.header("IFTTT-Service-Key");
