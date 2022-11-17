@@ -316,8 +316,9 @@ app.post('/ifttt/v1/triggers/new_article_matching_search/', async (req, res) => 
 
 app.post('/ifttt/v1/triggers/news_article_from_section/', async (req, res) => {
     
-    if(!req.hasOwnProperty('section'))
-        var searchCategory = req.body.triggerFields.section
+    var triggerFields = req.body.triggerFields
+    if(triggerFields != undefined)
+        var searchCategory = triggerFields.section
     
     //Which category did the user pick?
     if(searchCategory == "politics")
@@ -349,15 +350,9 @@ app.post('/ifttt/v1/triggers/news_article_from_section/', async (req, res) => {
     var serviceKey = req.header("IFTTT-Service-Key");
     if (serviceKey === IFTTT_SERVICE_KEY) {
         var n = req.body.limit
-        var dp = 0
-        if (!req.hasOwnProperty('section')) {
-            dp = 1
-            console.log('The req object is missing the triggerFields key.');
-          }
-        var tp2 = ""
-        console.log("Going in. Tf = " + req.triggerFields)
+        
         if (typeof searchCategory === 'undefined'){
-            console.log("Toasty bitch. Tf = " + searchCategory || dp == 1)
+            console.log("Toasty. Tf = " + searchCategory || dp == 1)
             res.status(400).json({
                 status: 'error',
                 errors: [
