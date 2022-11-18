@@ -101,6 +101,52 @@ async function fetchRssFeedOnly1(feedUrl) {
     return response2
 }  
 
+async function fetchFilteredRss(feedUrl, toim) {
+    let feed = await parser.parseURL(feedUrl);
+    let data = feed.items.filter(item => item.title.toLowerCase().includes(toim.toLowerCase())).map(item => ({
+        meta: {
+            id: generateUnique8DigitString(),
+            timestamp: Math.floor(Date.now() / 1000)
+        },
+                created_at: createAt(),
+                title: item.title,
+                link: item.link,
+                date: item.pubDate
+    }));
+  
+    let response2 = {
+        data       
+    }
+    if (data.length < 3) {
+        var cnt = 0
+        for (i = 0; i < 4 - data.length; i++) {
+            let item = data[i];
+            item.meta.id = generateUnique8DigitString()  + "-" + i
+            data.push(item)
+            
+        }
+    }
+    return response2
+}
+
+async function fetchFilteredRssOnly1(feedUrl, toim) {
+    let feed = await parser.parseURL(feedUrl);
+    let data = feed.items.filter(item => item.title.toLowerCase().includes(toim.toLowerCase())).slice(0,1).map(item => ({
+        meta: {
+            id: generateUnique8DigitString(),
+            timestamp: Math.floor(Date.now() / 1000)
+        },
+                created_at: createAt(),
+                title: item.title,
+                link: item.link,
+                date: item.pubDate
+    }));
+  
+    let response2 = {
+        data       
+    }
+    return response2
+}
 
 /////////////////////////////////// End Original Parser //////////////////////////////////////////////////////
 
@@ -128,7 +174,7 @@ app.get('/ifttt/v1/status', function(req, res) {
             "samples": {
                 "triggers": {
                     "new_article_matching_search": {
-                        "term": "U.S."
+                        "term": "US"
                     },
                     "news_article_from_section" :{
                         "section": "politics"
@@ -260,58 +306,13 @@ app.post('/ifttt/v1/triggers/news', async (req, res) => {
     }
 })
 
-//IFTTT Route for Looking for artciles w/ a specific title in it
-app.post('/ifttt/v1/triggers/new_article_matching_search/', async (req, res) => {
-    var serviceKey = req.header("IFTTT-Service-Key");
-    var searchString = req.header("term");
-    
-    
-    if (serviceKey == IFTTT_SERVICE_KEY) { 
-            if(req.header('triggerFeilds') == ""){
-            res.status(400).json({
-                status: "error",
-                message: 'An error occured from data check -TF:' + Tfs
-                })
-            }
-    
-        
-        await fetchRssFeed(myFeedUrl)
-            .then(data => {
-                //const searchString = req.params.searchString
-                searchString = req.params.searchString
-                const filteredData = data.filter(item => {
-                    return item.title.toLowerCase().includes(searchString.toLowerCase())
-                })
 
-                res.status(200).json(filteredData)
-            })
-        .catch(err => {
-            res.status(500).json({
-                status: "error",
-                message: 'An error occured when fetching your data - DUDE!'
-                })
-            })
-    }
-    else 
-    {
-        res.status(401).json({
-            status: 'error',
-            errors: [
-                {
-                  "message": "Invalid AF",
-                  "rando element": [
-                    "Data Value 1'",
-                    "Data Value 2'"
-                  ],
-                  "internal_message": "Ifttt::Protocol::AuthorizationError: Invalid IFTTT-Channel-Key"
-                }
-              ],
-           notes: 'Invalid Service key ' + IFTTT_SERVICE_KEY + " == " + serviceKey
-        })  
-    }
+function gimmeDatFeed(searchString){
+    filteredD = data.filter(item => {
+        return item.title.toLowerCase().includes(searchString.toLowerCase())
+    })
 
-})
-
+}
 
 
 app.post('/ifttt/v1/triggers/news_article_from_section/', async (req, res) => {
@@ -352,7 +353,7 @@ app.post('/ifttt/v1/triggers/news_article_from_section/', async (req, res) => {
         var n = req.body.limit
         
         if (typeof searchCategory === 'undefined'){
-            console.log("Toasty. Tf = " + searchCategory || dp == 1)
+           
             res.status(400).json({
                 status: 'error',
                 errors: [
@@ -362,7 +363,8 @@ app.post('/ifttt/v1/triggers/news_article_from_section/', async (req, res) => {
                   ],
                notes: 'Trigger Fields are Missing',
               
-            })  
+            }) 
+            return
         }
         
         
@@ -400,6 +402,7 @@ app.post('/ifttt/v1/triggers/news_article_from_section/', async (req, res) => {
                         message: 'An error occured when fetching your data. IFTTT-Service-Key:' + serviceKey,
                         feed_url: myFeedUrl2
                     })
+                    return
                 })
         }
     }
@@ -421,60 +424,105 @@ app.post('/ifttt/v1/triggers/news_article_from_section/', async (req, res) => {
            notes: 'Invalid Service key ' + IFTTT_SERVICE_KEY + " == " + serviceKey,
            feed_url: myFeedUrl2
         })  
-
+        return
     }
 })
 
-app.post('/ifttt/v1/triggers/news_article_from_section/:searchCategory', async (req, res) => {
-    const searchCategory = req.params.searchCategory.toLowerCase()
-    
-    //Which category did the user pick?
-    if(searchCategory == "poltiics")
-        feedpt2 = politics
-    else if(searchCategory == "business")
-        feedpt2 = business
-    else if(searchCategory == "national")
-        feedpt2 = national
-    else if(searchCategory == "entertainment")
-        feedpt2 = entertainment
-    else if(searchCategory == "sports")
-        feedpt2 = sports
-    else if(searchCategory == "world")
-        feedpt2 = world
-    else if(searchCategory == "lifestyle")
-        feedpt2 = lifestyle
-    else if(searchCategory == "business")
-        feedpt2 = business
-    else if(searchCategory == "technology")
-        feedpt2 = business
-    else if(searchCategory == "opinions")
-        feedpt2 = business
-    else 
-        feedpt2 = all
-    
-    //Building the correct feed
-    var myFeedUrl2 = feedpt1 + feedpt2 + ".xml"
-    
-    //Check the if the Service Key is valid
+
+
+function filterData(term, data) {
+    for (var i=0; i<data.length; i++) {
+      if (data[i].title.toLowerCase().includes(term.toLowerCase())) {
+        return data[i];
+      }
+    }
+  }
+
+  //data = filterData("search term");
+
+//IFTTT Route for Looking for artciles w/ a specific title in it
+app.post('/ifttt/v1/triggers/new_article_matching_search/', async (req, res) => {
     var serviceKey = req.header("IFTTT-Service-Key");
-    if (serviceKey === IFTTT_SERVICE_KEY) {
-       await fetchRssFeed(myFeedUrl2)
+    var n = req.body.limit
+    var triggerFields = req.body.triggerFields
+   if(triggerFields != undefined)
+        var searchTerm = triggerFields.term
+    
+    
+    if (serviceKey == IFTTT_SERVICE_KEY) { 
+        console.log("Here's the search term: " + searchTerm)
+        console.log("URL = " + myFeedUrl)
+        //Building the correct feed
+        var feedpt2 = all
+        var myFeedUrl2 = feedpt1 + feedpt2 + ".xml"
+        //console.log("URL = " + myFeedUrl2)
+        
+        if (typeof searchTerm === 'undefined'){
+           
+            res.status(400).json({
+                status: 'error',
+                errors: [
+                    {
+                      "message": "Invalid AF",
+                                         }
+                  ],
+               notes: 'Trigger Fields are Missing',
+              
+            }) 
+            return
+        }
+        if(n ==0) {
+            res.status(200).json({
+                "data": []          
+            })
+        } 
+        else if(n==1)  
+        {
+            await fetchFilteredRssOnly1(myFeedUrl, searchTerm)
             .then(data => {
-            res.status(200).json(data)
+                res.status(200).json(data)
+                
             })
             .catch(err => {
                 res.status(500).json({
-                    status: "error",
-                    message: 'An error occured when fetching your data' + IFTTT_SERVICE_KEY,
+                    status: "error, search Term was: " + searchTerm, 
+                    message: 'An error occured when fetching your data. IFTTT-Service-Key:' + serviceKey,
                     feed_url: myFeedUrl2
                 })
             })
+
+        }
+        else 
+        {
+            await fetchFilteredRss(myFeedUrl, searchTerm)
+                .then(data => {
+                    res.status(200).json(data)
+                })
+                .catch(err => {
+                    res.status(500).json({
+                        status: "error",
+                        message: 'An error occured when fetching your data'
+                    })
+                })
+            }
     }
-    else {
+    else 
+    {
         res.status(401).json({
             status: 'error',
-            message: 'Invalid Service key',
-            feed_url: myFeedUrl2
-        })  
+            errors: [
+                {
+                  "message": "Invalid AF",
+                  "rando element": [
+                    "Data Value 1'",
+                    "Data Value 2'"
+                  ],
+                  "internal_message": "Ifttt::Protocol::AuthorizationError: Invalid IFTTT-Channel-Key"
+                }
+              ],
+           notes: 'Invalid Service key ' + IFTTT_SERVICE_KEY + " == " + serviceKey
+        })
+        return  
     }
+
 })
